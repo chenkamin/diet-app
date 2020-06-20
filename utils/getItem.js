@@ -1,0 +1,17 @@
+const Sequelize = require("sequelize");
+const sequelize = new Sequelize("diet", "root", "ohad152", {
+  host: "localhost",
+  dialect: "mysql",
+});
+sequelize
+  .authenticate()
+  .then(() => {
+    console.log("Connection has been established successfully.");
+  })
+  .catch((err) => {
+    console.error("Unable to connect to the database:", err);
+  });
+
+exports.exports = async (table, id) => {
+  return await sequelize.query(`SELECT * FROM ${table} where id = ${id}`);
+};
