@@ -3,7 +3,7 @@ const { promisify } = require("util");
 const catchAsync = require("./../utils/catchAsync");
 const jwt = require("jsonwebtoken");
 const bcyrpt = require("bcryptjs");
-
+const moment = require("moment");
 const AppError = require("./../utils/appError");
 // const { networkInterfaces } = require('os');
 // const email = require('./../utils/email');
@@ -12,17 +12,26 @@ const correctPassword = async (candidatePassword, userPassword) => {
   return await bcyrpt.compare(candidatePassword, userPassword);
 };
 
-// const changedPasswordAfter = async (user,JWTTimeStamp) {
-//   if (passwordChangedAt) {
-//     console.log(passwordChangedAt, JWTTimeStamp);
-//     const changedTimestamp = parseInt(
-//       passwordChangedAt.getTime() / 1000,
-//       10
-//     );
-//     return JWTTimeStamp < changedTimestamp;
-//   }
-//   return false;
-// }
+const changedPasswordAfter = (user, JWTTimeStamp) => {
+  console.log("USER", user[0]["passwordChangedAt"]);
+  if (user[0]["passwordChangedAt"] !== null) {
+    const time = user[0]["passwordChangedAt"];
+    const changedTimestamp = parseInt(new Date(time).getTime() / 1000, 10);
+    return JWTTimeStamp < changedTimestamp;
+  }
+  return false;
+};
+
+const passwordChangedAt = async (user) => {
+  console.log(user);
+  var startdate = moment().subtract(1, "days").format("DD-MM-YYYY");
+
+  let date = moment().subtract(5, "minutes").format("YYYY-MM-DD , hh:mm:ss");
+  console.log("chenkamin", date);
+  const sql = `update  users set passwordChangedAt = '${date}' where id = ${user[0]["id"]}`;
+  console.log(sql);
+  await sequelize.query(sql, { type: Sequelize.QueryTypes.UPDATE });
+};
 
 const Sequelize = require("sequelize");
 const sequelize = new Sequelize("diet", "root", "ohad152", {
@@ -52,6 +61,7 @@ const createSendToken = (user, statusCode, res) => {
     ),
     httpOnly: true,
   };
+  console.log(cookieOptions.expires);
   if (process.env.NODE_ENV === "production") {
     cookieOptions.secure = true;
   }
@@ -80,7 +90,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     `SELECT * from users where id = ${newUserId[0]}`,
     { type: Sequelize.QueryTypes.SELECT }
   );
-
+  // passwordChangedAt(newUser);
   console.log(newUser);
   createSendToken(newUser, 201, res);
 });
@@ -133,7 +143,10 @@ exports.protect = catchAsync(async (req, res, next) => {
     return next(new AppError("user not exists", 401));
   }
   //4check if change pass after jwt was issued
-  if (freshUser.changedPasswordAfter(decoded.iat)) {
+  const a = changedPasswordAfter(freshUser, decoded.iat);
+  console.log("this is a");
+  console.log(a);
+  if (changedPasswordAfter(freshUser, decoded.iat)) {
     return next(new AppError("user recently changed password", 401));
   }
   req.user = freshUser;
@@ -216,20 +229,29 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
 
 exports.updatePassword = catchAsync(async (req, res, next) => {
   //get user from collection
-
-  const user = await User.findById(req.user.id).select("+password");
+  console.log(req.user);
+  const user = await sequelize.query(
+    `SELECT * from users where id = ${req.user[0].id}`,
+    { type: Sequelize.QueryTypes.SELECT }
+  );
+console.log("HERE A")
   if (!user) {
     return next(new AppError("cant find a user", 400));
   }
   //check if posted current password is correct
-  if (!(await user.correctPassword(req.body.passwordCurrent, user.password))) {
+  if (!(await correctPassword(req.body.passwordCurrent, user[0].password))) {
     return next(new AppError("password is not match the old password", 401));
   }
   //if so , update the pass
 
-  user.password = req.body.password;
-  user.passwordConfirm = req.body.passwordConfirm;
-  await user.save();
+  const password = await bcyrpt.hash(req.body.password, 12);
+
+  const newUserId = await sequelize.query(
+    `UPDATE users set password = '${password}'`,    { type: Sequelize.QueryTypes.UPDATE }
+  );
+
+  // user.password = req.body.password;
+  // user.passwordConfirm = req.body.passwordConfirm;
 
   //login send JWT
   createSendToken(user, 200, res);

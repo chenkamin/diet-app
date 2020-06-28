@@ -21,6 +21,12 @@ router.post("/login", authController.login);
 
 router.get("/", authController.protect, userController.getAllUsers);
 
+router.patch(
+  '/updateMyPassword/',
+  authController.protect,
+  authController.updatePassword
+);
+
 router
   .route("/:id")
   // .get(userController.getUser)
