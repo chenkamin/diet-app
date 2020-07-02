@@ -18,11 +18,12 @@ sequelize
 
 router.post("/signup", authController.signup);
 router.post("/login", authController.login);
-
+router.post("/forgotPassword", authController.forgotPassword);
 router.get("/", authController.protect, userController.getAllUsers);
+router.patch("/resetPassword/:token", authController.resetPassword);
 
 router.patch(
-  '/updateMyPassword/',
+  "/updateMyPassword/",
   authController.protect,
   authController.updatePassword
 );

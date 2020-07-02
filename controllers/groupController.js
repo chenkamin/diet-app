@@ -14,16 +14,18 @@ sequelize
     console.error("Unable to connect to the database:", err);
   });
 
-exports.getAllUsers = catchAsync(async (req, res, next) => {
+exports.getAllGroups = catchAsync(async (req, res, next) => {
+  console.log(req.query.guideId);
   let query;
   if (Object.entries(req.query).length !== 0) {
     console.log("INIF1");
-    query = `SELECT * FROM diet.users_groups as U
-    left join users as U1 on U.user_id = U1.id
-    where U.group_id = ${req.query.guideId}`;
+    query = `SELECT * FROM diet.groups as D
+    left join guide_group as G on D.id = G.group_id
+    where guide_id = ${req.query.guideId}`;
   } else {
     console.log("INIF2");
-    query = "SELECT * FROM users";
+    query =
+      "SELECT * FROM diet.groups as D left join guide_group as G on D.id = G.group_id";
   }
   const users = await sequelize.query(query, {
     type: Sequelize.QueryTypes.SELECT,

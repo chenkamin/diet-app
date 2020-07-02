@@ -2,6 +2,7 @@ const express = require("express");
 const foodRouter = require("./routers/foodRouter");
 const userRouter = require("./routers/userRouter");
 const mealRouter = require("./routers/mealRouter");
+const groupRouter = require("./routers/groupRouter");
 
 const app = express();
 const Sequelize = require("sequelize");
@@ -61,6 +62,7 @@ app.use((req, res, next) => {
 app.use("/foods", foodRouter);
 app.use("/users", userRouter);
 app.use("/meals", mealRouter);
+app.use("/groups", groupRouter);
 
 // app.all('*', (req, res, next) => {
 //   // const err = new Error(`cant find ${req.originalUrl} on the server`);

@@ -6,7 +6,7 @@ const bcyrpt = require("bcryptjs");
 const moment = require("moment");
 const AppError = require("./../utils/appError");
 // const { networkInterfaces } = require('os');
-// const email = require('./../utils/email');
+const email = require("./../utils/email");
 
 const correctPassword = async (candidatePassword, userPassword) => {
   return await bcyrpt.compare(candidatePassword, userPassword);
@@ -31,6 +31,25 @@ const passwordChangedAt = async (user) => {
   const sql = `update  users set passwordChangedAt = '${date}' where id = ${user[0]["id"]}`;
   console.log(sql);
   await sequelize.query(sql, { type: Sequelize.QueryTypes.UPDATE });
+};
+
+const createPasswordResetToken = async (user) => {
+  const resetToekn = crypto.randomBytes(32).toString("hex");
+  const passWordResetToken = crypto
+    .createHash("sha256")
+    .update(resetToekn)
+    .digest("hex");
+  const passwordResetExpires = moment()
+    .subtract(10, "minutes")
+    .format("YYYY-MM-DD , hh:mm:ss");
+
+  const newUserId = await sequelize.query(
+    `UPDATE users set passwordResetExpires = '${passwordResetExpires}',passWordResetToken = '${passWordResetToken}'  where id = ${user[0].id}`,
+    { type: Sequelize.QueryTypes.UPDATE }
+  );
+
+  console.log({ resetToekn }, this.passWordResetToken);
+  return resetToekn;
 };
 
 const Sequelize = require("sequelize");
@@ -165,22 +184,31 @@ exports.protect = catchAsync(async (req, res, next) => {
 exports.forgotPassword = catchAsync(async (req, res, next) => {
   console.log("XXX");
   //get user base on email
-  const user = await User.findOne({ email: req.body.email });
+
+  const user = await sequelize.query(
+    `SELECT * from users where email = '${req.body.email}'`,
+    { type: Sequelize.QueryTypes.SELECT }
+  );
+
   if (!user) {
     next(new AppError("no user with this mail", 404));
   }
+
   //generate token
-  const resetToken = user.createPasswordResetToken();
-  await user.save({ validateBeforeSave: false });
+  const resetToken = await createPasswordResetToken(user);
+  console.log(resetToken);
   //send it in email
+  console.log("P", req.protocol);
+  console.log("G", req.get("host"));
   const resetURL = `${req.protocol}://${req.get(
     "host"
-  )}/api/v1/users/resetPassword/${resetToken}`;
+  )}/users/resetPassword/${resetToken}`;
   const message = `Forgot you pass? submut a patch with your new passs and pass confir, to ${resetURL}. \nIf you didnt forget your pass , ignore the mail`;
-  console.log(email);
+  // console.log(email);
+  console.log("CHEN");
   try {
     await email.sendEmail({
-      email: user.email,
+      email: user[0].email,
       subject: "Your password reset token , valid for 10",
       message,
     });
@@ -190,6 +218,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
       message: "Token sent to email",
     });
   } catch (err) {
+    
     user.passWordResetToken = undefined;
     user.passwordResetExpires = undefined;
     await user.save({ validateBeforeSave: false });
@@ -208,10 +237,17 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
     .createHash("sha256")
     .update(req.params.token)
     .digest("hex");
-  const user = await User.findOne({
-    passWordResetToken: hashedToken,
-    passwordResetExpires: { $gt: Date.now() },
-  });
+  const now = moment().format("YYYY-MM-DD , hh:mm:ss");
+  console.log(now);
+  const user = await sequelize.query(
+    `SELECT * from users where passWordResetToken = '${hashedToken}' and passwordResetExpires > '${now}'`,
+    { type: Sequelize.QueryTypes.SELECT }
+  );
+  console.log("USER     ....", user);
+  // const user = await User.findOne({
+  //   passWordResetToken: hashedToken,
+  //   passwordResetExpires: { $gt: Date.now() },
+  // });
   //if token not expired and there is user , set new pass
   if (!user) {
     return next(new AppError("Token expired", 400));
@@ -220,6 +256,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   user.passwordConfirm = req.body.password;
   user.passWordResetToken = undefined;
   user.passwordResetExpires = undefined;
+  
   await user.save();
   //update passwordChangedAt
 
@@ -229,12 +266,10 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
 
 exports.updatePassword = catchAsync(async (req, res, next) => {
   //get user from collection
-  console.log(req.user);
   const user = await sequelize.query(
     `SELECT * from users where id = ${req.user[0].id}`,
     { type: Sequelize.QueryTypes.SELECT }
   );
-console.log("HERE A")
   if (!user) {
     return next(new AppError("cant find a user", 400));
   }
@@ -243,15 +278,11 @@ console.log("HERE A")
     return next(new AppError("password is not match the old password", 401));
   }
   //if so , update the pass
-
   const password = await bcyrpt.hash(req.body.password, 12);
-
   const newUserId = await sequelize.query(
-    `UPDATE users set password = '${password}'`,    { type: Sequelize.QueryTypes.UPDATE }
+    `UPDATE users set password = '${password} where id = ${req.user[0].id}'`,
+    { type: Sequelize.QueryTypes.UPDATE }
   );
-
-  // user.password = req.body.password;
-  // user.passwordConfirm = req.body.passwordConfirm;
 
   //login send JWT
   createSendToken(user, 200, res);
