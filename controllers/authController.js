@@ -218,7 +218,6 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
       message: "Token sent to email",
     });
   } catch (err) {
-    
     user.passWordResetToken = undefined;
     user.passwordResetExpires = undefined;
     await user.save({ validateBeforeSave: false });
@@ -233,6 +232,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
 });
 exports.resetPassword = catchAsync(async (req, res, next) => {
   //get user based on token
+  console.log("c", req.params.token);
   const hashedToken = crypto
     .createHash("sha256")
     .update(req.params.token)
@@ -240,7 +240,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   const now = moment().format("YYYY-MM-DD , hh:mm:ss");
   console.log(now);
   const user = await sequelize.query(
-    `SELECT * from users where passWordResetToken = '${hashedToken}' and passwordResetExpires > '${now}'`,
+    `SELECT * from users where passWordResetToken = '${hashedToken}' and passwordResetExpires < '${now}'`,
     { type: Sequelize.QueryTypes.SELECT }
   );
   console.log("USER     ....", user);
@@ -252,12 +252,18 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   if (!user) {
     return next(new AppError("Token expired", 400));
   }
-  user.password = req.body.password;
-  user.passwordConfirm = req.body.password;
-  user.passWordResetToken = undefined;
-  user.passwordResetExpires = undefined;
-  
-  await user.save();
+  // user[0].password = req.body.password;
+  // user[0].passwordConfirm = req.body.password;
+  // user[0].passWordResetToken = undefined;
+  // user[0].passwordResetExpires = undefined;
+  const password = await bcyrpt.hash(req.body.password, 12);
+
+  const newUserId = await sequelize.query(
+    `UPDATE users set passwordResetExpires = NULL ,passWordResetToken = '',password = '${password}'  where id = ${user[0].id}`,
+    { type: Sequelize.QueryTypes.UPDATE }
+  );
+
+  // await user.save();
   //update passwordChangedAt
 
   //log the user in , send JWT
