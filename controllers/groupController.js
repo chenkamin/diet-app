@@ -27,14 +27,14 @@ exports.getAllGroups = catchAsync(async (req, res, next) => {
     query =
       "SELECT * FROM diet.groups as D left join guide_group as G on D.id = G.group_id";
   }
-  const users = await sequelize.query(query, {
+  const groups = await sequelize.query(query, {
     type: Sequelize.QueryTypes.SELECT,
   });
   res.status(200).json({
-    results: users.length,
+    results: groups.length,
     status: "success",
     data: {
-      users,
+      groups,
     },
   });
 });

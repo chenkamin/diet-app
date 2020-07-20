@@ -20,7 +20,7 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
     console.log("INIF1");
     query = `SELECT * FROM diet.users_groups as U
     left join users as U1 on U.user_id = U1.id
-    where U.group_id = ${req.query.guideId}`;
+    where U.group_id = ${req.query.groupId}`;
   } else {
     console.log("INIF2");
     query = "SELECT * FROM users";
@@ -43,12 +43,16 @@ exports.createUser = (req, res) => {
     message: "this route is not yet define",
   });
 };
-exports.getUser = (req, res) => {
+exports.getUser = catchAsync(async (req, res, next) => {
+  const user = await sequelize.query(
+    `SELECT * from users where id = ${req.params.id}`,
+    { type: Sequelize.QueryTypes.SELECT }
+  );
   res.status(500).json({
     status: "error",
-    message: "this route is not yet define",
+    user,
   });
-};
+});
 
 exports.updateMe = catchAsync(async (req, res, next) => {
   //create error if update password

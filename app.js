@@ -3,6 +3,7 @@ const foodRouter = require("./routers/foodRouter");
 const userRouter = require("./routers/userRouter");
 const mealRouter = require("./routers/mealRouter");
 const groupRouter = require("./routers/groupRouter");
+const cors = require("cors");
 
 const app = express();
 const Sequelize = require("sequelize");
@@ -25,6 +26,7 @@ const User = require("./models/User");
 // });
 // app.use('/api', limiter);
 // //parser
+app.use(cors());
 app.use(express.json({ limit: "10kb" }));
 
 // //data sanitization against noAQL query injection

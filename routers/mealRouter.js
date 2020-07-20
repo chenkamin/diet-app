@@ -18,9 +18,9 @@ sequelize
     console.error("Unable to connect to the database:", err);
   });
 
-router.post("/", authController.protect, mealController.createMeal);
+router.post("/", mealController.createMeal);
 
-router.get("/", authController.protect, mealController.meal);
+router.get("/:id/:date", authController.protect, mealController.meal);
 
 // router.get("/mealsPerDay", async (req, res) => {
 
