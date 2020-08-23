@@ -18,23 +18,28 @@ sequelize
 
 exports.createMeal = async (req, res) => {
   console.log("meal");
+  console.log(req.body);
+  const mealsBody = req.body;
   const now = moment().format("YYYY-MM-DD");
-  const { userId, foodId } = req.body;
-  let user = await sequelize.query(
-    `insert INTO foods_users VALUES (${null},${userId}, ${foodId}, '${now}')`,
-    { type: Sequelize.QueryTypes.INSERT }
-  );
-
+  for (m of mealsBody) {
+    console.log(m)
+    let user = await sequelize.query(
+      `insert INTO foods_users VALUES (${null},${m.userId}, ${m.foodId},${m.groupId}, '${now}')`,
+      { type: Sequelize.QueryTypes.INSERT }
+    );
+  }
+  req.body[0].userId;
+  console.log("======", req.body[0].userId)
   const points = await sequelize.query(
     `SELECT sum(points) as  totalPoints FROM diet.foods_users as A
           join foods as B on A.food_id = B.id
-          where A.user_id = ${userId} and date = '${now}'`,
+          where A.user_id = ${req.body[0].userId} and date = '${now}'`,
     { type: Sequelize.QueryTypes.SELECT }
   );
   const meals = await sequelize.query(
     `SELECT * FROM diet.foods_users as A
           join foods as B on A.food_id = B.id
-          where A.user_id = ${userId} and date = '${now}'`,
+          where A.user_id = ${req.body[0].userId} and date = '${now}'`,
     { type: Sequelize.QueryTypes.SELECT }
   );
 
@@ -51,9 +56,10 @@ exports.meal = async (req, res) => {
     { type: Sequelize.QueryTypes.SELECT }
   );
   const meals = await sequelize.query(
-    `SELECT * FROM diet.foods_users as A
-          join foods as B on A.food_id = B.id
-          where A.user_id = ${id} and date = '${date}'`,
+    `SELECT A.*,B.*,C.name as groupName, C.id as groupId FROM diet.foods_users as A
+    join foods as B on A.food_id = B.id
+    join foodGroups as C on B.foodGroupId = C.id
+          where A.user_id = ${id} and  date_format(date, '%Y-%m-%d') = '${date}'`,
     { type: Sequelize.QueryTypes.SELECT }
   );
 

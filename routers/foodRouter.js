@@ -16,7 +16,8 @@ sequelize
   });
 
 router.get("/", async (req, res, next) => {
-  const foods = await sequelize.query("SELECT * FROM foods", {
+  console.log("FOODS");
+  const foods = await sequelize.query("SELECT f.*,fg.name as groupName, fg.id as groupId FROM foods as f join foodGroups as fg on f.foodGroupId = fg.id", {
     type: Sequelize.QueryTypes.SELECT,
   });
   res.send(foods);
